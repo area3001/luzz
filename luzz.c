@@ -38,10 +38,33 @@ luzz_rgb_to_lpd8806(luzz_ctx_t *ctxp, const struct mosquitto_message *msgp)
 	luzz_rgb_t *i_framep = msgp->payload;
 	luzz_grb_t *o_framep = ctxp->framep;
 
-	for (int i = 0; i < ctxp->num_leds; i++) {
-		(o_framep + i)->r = ((i_framep + i)->r >> 1) | 0x80;
-		(o_framep + i)->g = ((i_framep + i)->g >> 1) | 0x80;
-		(o_framep + i)->b = ((i_framep + i)->b >> 1) | 0x80;
+	int c, i;
+	int cn = ctxp->num_leds / ctxp->col_length;
+	int cl = ctxp->col_length;
+	int off_even, i_off_odd, o_off_odd;
+
+	luzz_rgb_t *i_framep_off = NULL;
+	luzz_grb_t *o_framep_off = NULL;
+
+	for (c = 0; c < cn; c += 2) {
+		for (i = 0; i < cl; i++) {
+			off_even = c * cl + i;
+			i_framep_off = i_framep + off_even;
+			o_framep_off = o_framep + off_even;
+
+			o_framep_off->r = (i_framep_off->r >> 1) | 0x80;
+			o_framep_off->g = (i_framep_off->g >> 1) | 0x80;
+			o_framep_off->b = (i_framep_off->b >> 1) | 0x80;
+
+			i_off_odd = (c + 1) * cl + i;
+			o_off_odd = (c + 2) * cl - i - 1;
+			i_framep_off = i_framep + i_off_odd;
+			o_framep_off = o_framep + o_off_odd;
+
+			o_framep_off->r = (i_framep_off->r >> 1) | 0x80;
+			o_framep_off->g = (i_framep_off->g >> 1) | 0x80;
+			o_framep_off->b = (i_framep_off->b >> 1) | 0x80;
+		}
 	}
 }
 
