@@ -24,6 +24,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <linux/spi/spidev.h>
 #include <mosquitto.h>
 
 #include "luzz.h"
@@ -44,7 +48,6 @@ main(int argc, char *argv[])
 	char *id = NULL;
 	bool clean_session = true;
 	struct mosquitto *mosq = NULL;
-	char err[128];
 	int timeout = -1;
 	int max_packets = 1;
 	int *mid = NULL;
@@ -54,7 +57,7 @@ main(int argc, char *argv[])
 	luzz_ctx_t ctx = {
 		.index = 0,
 		.dev = "/dev/stdout",
-		.speed = 16000,
+		.speed_hz = 16000000,
 		.strip_type = LUZZ_STRIP_LPD8806,
 		.num_leds = 64,
 		.col_length = 8,
@@ -64,6 +67,18 @@ main(int argc, char *argv[])
 	ctx.framep = calloc(ctx.num_leds + 1, sizeof(luzz_grb_t));
 	if (ctx.framep == NULL) {
 		goto oom;
+	}
+
+	if ((ctx.fd = rc = open(ctx.dev, O_WRONLY)) == -1) {
+		perror(ctx.dev);
+		goto finish;
+	}
+
+	if (strncmp("/dev/spidev", (const char *)ctx.dev, 11) == 0) {
+		if ((rc = ioctl(ctx.fd, SPI_IOC_WR_MAX_SPEED_HZ, &ctx.speed_hz)) == -1) {
+			perror("spi_speed");
+			goto finish;
+		}
 	}
 
 	mosquitto_lib_init();
@@ -79,7 +94,7 @@ main(int argc, char *argv[])
 				rc = 1;
 				goto oom;
 			case EINVAL:
-				fprintf(stderr, "Error: Invalid id and/or clean_session.\n");
+				fprintf(stderr, "mosq_new: Invalid id and/or clean_session.\n");
 				rc = 1;
 				goto finish;
 		}
@@ -97,22 +112,21 @@ main(int argc, char *argv[])
 		while ((rc = mosquitto_loop(mosq, timeout, max_packets)) != MOSQ_ERR_SUCCESS) {
 			switch (rc) {
 				case MOSQ_ERR_INVAL:
-					fprintf(stderr, "Error: Invalid input parameters.\n");
+					fprintf(stderr, "mosq_loop: Invalid input parameters.\n");
 					goto finish;
 				case MOSQ_ERR_NOMEM:
 					goto oom;
 				case MOSQ_ERR_PROTOCOL:
-					fprintf(stderr, "Errpr: MQTT Protocol error.\n");
+					fprintf(stderr, "mosq_loop: MQTT Protocol error.\n");
 					goto finish;
 				case MOSQ_ERR_ERRNO:
-					strerror_r(errno, err, sizeof(err));
-					fprintf(stderr, "Error: %s\n", err);
+					perror("mosq_loop");
 					goto finish;
 				case MOSQ_ERR_NO_CONN:
-					fprintf(stderr, "Error: No broker connection.\n");
+					fprintf(stderr, "mosq_loop: No broker connection.\n");
 					break;
 				case MOSQ_ERR_CONN_LOST:
-					fprintf(stderr, "Error: Connection to broker was lost.\n");
+					fprintf(stderr, "mosq_loop: Connection to broker was lost.\n");
 					break;
 			}
 
@@ -123,7 +137,7 @@ main(int argc, char *argv[])
 	}
 
 oom:
-	fprintf(stderr, "Error: Out of memory.\n");
+	fprintf(stderr, "error: Out of memory.\n");
 finish:
 	mosquitto_destroy(mosq);
 	mosquitto_lib_cleanup();
