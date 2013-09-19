@@ -1,6 +1,7 @@
 #define LUZZ_VERSION "0.1"
 
 #define LUZZ_ID_TPL "luzz-v%s-i%d"
+#define LUZZ_GEN_ID_TPL "luzz-gen-v%s"
 #define LUZZ_TOPIC_TPL "/luzz/%d"
 
 #define LUZZ_STRIP_LPD8806 0
