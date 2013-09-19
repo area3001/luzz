@@ -28,6 +28,11 @@
 
 #include "luzz.h"
 
+static void
+luzz_on_message(struct mosquitto *mosq, void *ctx, const struct mosquitto_message *msg)
+{
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -43,22 +48,22 @@ main(int argc, char *argv[])
 	char err[128];
 	int timeout = -1;
 	int max_packets = 1;
+	int *mid = NULL;
+	char *topic = NULL;
+	int qos = 0;
 
 	mosquitto_lib_init();
 
 	if ((rc = asprintf(&id, LUZZ_ID_TPL, LUZZ_VERSION, index)) < 0) {
-		fprintf(stderr, "Error: Out of memory.\n");
-		goto finish;
+		goto oom;
 	}
-
 	mosq = mosquitto_new(id, clean_session, NULL); /* TODO pass a ctx */
 
 	if (!mosq) {
 		switch (errno) {
 			case ENOMEM:
-				fprintf(stderr, "Error: Out of memory.\n");
 				rc = 1;
-				goto finish;
+				goto oom;
 			case EINVAL:
 				fprintf(stderr, "Error: Invalid id and/or clean_session.\n");
 				rc = 1;
@@ -66,7 +71,13 @@ main(int argc, char *argv[])
 		}
 	}
 
+	mosquitto_message_callback_set(mosq, luzz_on_message);
 	mosquitto_connect(mosq, host, port, keepalive);
+
+	if ((rc = asprintf(&topic, LUZZ_TOPIC_TPL, index)) < 0) {
+		goto oom;
+	}
+	mosquitto_subscribe(mosq, mid, topic, qos);
 
 	while (true) {
 		while ((rc = mosquitto_loop(mosq, timeout, max_packets)) != MOSQ_ERR_SUCCESS) {
@@ -75,8 +86,7 @@ main(int argc, char *argv[])
 					fprintf(stderr, "Error: Invalid input parameters.\n");
 					goto finish;
 				case MOSQ_ERR_NOMEM:
-					fprintf(stderr, "Error: Out of memory.\n");
-					goto finish;
+					goto oom;
 				case MOSQ_ERR_PROTOCOL:
 					fprintf(stderr, "Errpr: MQTT Protocol error.\n");
 					goto finish;
@@ -94,9 +104,12 @@ main(int argc, char *argv[])
 
 			sleep(1);
 			mosquitto_reconnect(mosq);
+			mosquitto_subscribe(mosq, mid, topic, qos);
 		}
 	}
 
+oom:
+	fprintf(stderr, "Error: Out of memory.\n");
 finish:
 	mosquitto_destroy(mosq);
 	mosquitto_lib_cleanup();
