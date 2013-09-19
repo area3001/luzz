@@ -6,7 +6,7 @@
 #define LUZZ_STRIP_LPD8806 0
 
 typedef struct {
-	int index;
+	int panel;
 	char *dev;
 	long speed_hz;
 	int fd;

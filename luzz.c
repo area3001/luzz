@@ -117,7 +117,7 @@ main(int argc, char *argv[])
 	int qos = 0;
 
 	luzz_ctx_t ctx = {
-		.index = 0,
+		.panel = 0,
 		.dev = "/dev/stdout",
 		.speed_hz = 16000000,
 		.strip_type = LUZZ_STRIP_LPD8806,
@@ -145,7 +145,7 @@ main(int argc, char *argv[])
 
 	mosquitto_lib_init();
 
-	if ((rc = asprintf(&id, LUZZ_ID_TPL, LUZZ_VERSION, ctx.index)) < 0) {
+	if ((rc = asprintf(&id, LUZZ_ID_TPL, LUZZ_VERSION, ctx.panel)) < 0) {
 		goto oom;
 	}
 	mosq = mosquitto_new(id, clean_session, &ctx);
@@ -165,7 +165,7 @@ main(int argc, char *argv[])
 	mosquitto_message_callback_set(mosq, luzz_on_message);
 	mosquitto_connect(mosq, host, port, keepalive);
 
-	if ((rc = asprintf(&topic, LUZZ_TOPIC_TPL, ctx.index)) < 0) {
+	if ((rc = asprintf(&topic, LUZZ_TOPIC_TPL, ctx.panel)) < 0) {
 		goto oom;
 	}
 	mosquitto_subscribe(mosq, mid, topic, qos);
