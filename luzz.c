@@ -29,16 +29,15 @@
 #include "luzz.h"
 
 static void
-luzz_on_message(struct mosquitto *mosq, void *ctx, const struct mosquitto_message *msg)
+luzz_on_message(struct mosquitto *mosq, void *obj, const struct mosquitto_message *msg)
 {
+	luzz_ctx_t *ctxp = obj;
 }
 
 int
 main(int argc, char *argv[])
 {
-	int i;
 	int rc = 0;
-	int index = 0;
 	char *host = "localhost";
 	int port = 1883;
 	int keepalive = 60;
@@ -52,12 +51,27 @@ main(int argc, char *argv[])
 	char *topic = NULL;
 	int qos = 0;
 
-	mosquitto_lib_init();
+	luzz_ctx_t ctx = {
+		.index = 0,
+		.dev = "/dev/stdout",
+		.speed = 16000,
+		.strip_type = LUZZ_STRIP_LPD8806,
+		.num_leds = 64,
+		.col_length = 8,
+		.framep = NULL,
+	};
 
-	if ((rc = asprintf(&id, LUZZ_ID_TPL, LUZZ_VERSION, index)) < 0) {
+	ctx.framep = calloc(ctx.num_leds + 1, sizeof(luzz_grb_t));
+	if (ctx.framep == NULL) {
 		goto oom;
 	}
-	mosq = mosquitto_new(id, clean_session, NULL); /* TODO pass a ctx */
+
+	mosquitto_lib_init();
+
+	if ((rc = asprintf(&id, LUZZ_ID_TPL, LUZZ_VERSION, ctx.index)) < 0) {
+		goto oom;
+	}
+	mosq = mosquitto_new(id, clean_session, &ctx);
 
 	if (!mosq) {
 		switch (errno) {
@@ -74,7 +88,7 @@ main(int argc, char *argv[])
 	mosquitto_message_callback_set(mosq, luzz_on_message);
 	mosquitto_connect(mosq, host, port, keepalive);
 
-	if ((rc = asprintf(&topic, LUZZ_TOPIC_TPL, index)) < 0) {
+	if ((rc = asprintf(&topic, LUZZ_TOPIC_TPL, ctx.index)) < 0) {
 		goto oom;
 	}
 	mosquitto_subscribe(mosq, mid, topic, qos);
