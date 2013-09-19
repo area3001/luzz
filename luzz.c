@@ -32,10 +32,36 @@
 
 #include "luzz.h"
 
-static void
-luzz_on_message(struct mosquitto *mosq, void *obj, const struct mosquitto_message *msg)
+static inline void
+luzz_rgb_to_lpd8806(luzz_ctx_t *ctxp, const struct mosquitto_message *msgp)
 {
-	luzz_ctx_t *ctxp = obj;
+	luzz_rgb_t *i_framep = msgp->payload;
+	luzz_grb_t *o_framep = ctxp->framep;
+
+	for (int i = 0; i < ctxp->num_leds; i++) {
+		(o_framep + i)->r = ((i_framep + i)->r >> 1) | 0x80;
+		(o_framep + i)->g = ((i_framep + i)->g >> 1) | 0x80;
+		(o_framep + i)->b = ((i_framep + i)->b >> 1) | 0x80;
+	}
+}
+
+static void
+luzz_on_message(struct mosquitto *mosq, void *objp, const struct mosquitto_message *msgp)
+{
+	luzz_ctx_t *ctxp = objp;
+
+	if (msgp->payloadlen != sizeof(luzz_rgb_t) * ctxp->num_leds) {
+		fprintf(stderr, "on_msg: Incorrect frame length (%d).\n", msgp->payloadlen);
+		return;
+	};
+		
+	switch (ctxp->strip_type) {
+		case LUZZ_STRIP_LPD8806:
+			luzz_rgb_to_lpd8806(ctxp, msgp);
+			break;
+	}
+
+	write(ctxp->fd, ctxp->framep, (ctxp->num_leds + 1) * sizeof(luzz_grb_t)); 
 }
 
 int
@@ -59,8 +85,8 @@ main(int argc, char *argv[])
 		.dev = "/dev/stdout",
 		.speed_hz = 16000000,
 		.strip_type = LUZZ_STRIP_LPD8806,
-		.num_leds = 64,
-		.col_length = 8,
+		.num_leds = 4,
+		.col_length = 2,
 		.framep = NULL,
 	};
 
