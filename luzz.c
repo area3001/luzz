@@ -1,5 +1,5 @@
 /*
-  luzz.c - Let there be light!
+  luzz.c - led there be light!
 
   Copyright (C) 2013 Bart Van Der Meerssche <bart@flukso.net>
 
