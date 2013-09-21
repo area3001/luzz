@@ -92,17 +92,44 @@ luzz_on_message(struct mosquitto *mosq, void *objp, const struct mosquitto_messa
 	};
 		
 	switch (ctxp->strip_type) {
-		case LUZZ_STRIP_LPD8806:
-			luzz_rgb_to_lpd8806(ctxp, msgp);
-			break;
+	case LUZZ_STRIP_LPD8806:
+		luzz_rgb_to_lpd8806(ctxp, msgp);
+		break;
 	}
 
 	write(ctxp->fd, ctxp->framep, (ctxp->num_leds + 1) * sizeof(luzz_grb_t)); 
 }
 
+static void
+luzz_usage(const luzz_ctx_t *ctxp)
+{
+	fprintf(stderr,
+		"Usage: luzz [-h host] [-p port] [-o device] [-s speed] [-t type]\n"
+		"            [-i index] [-n num_leds] [-c col_length]\n"
+		"\n"
+		"	-h : mqtt broker host address (%s)\n"
+		"	-p : mqtt broker port (%d)\n"
+		"	-o : output device to connect to (%s)\n"
+		"	-s : spi bus speed in bps (%d)\n"
+		"	-t : led strip type (lpd8806)\n"
+		"	-i : led panel index (%d)\n"
+		"	-n : number of leds on the strip (%d)\n"
+		"	-c : number of leds per column (%d)\n"
+		"\n",
+		ctxp->mqttp->host,
+		ctxp->mqttp->port,
+		ctxp->dev,
+		ctxp->speed_hz,
+		ctxp->panel,
+		ctxp->num_leds,
+		ctxp->col_length
+	);
+}
+
 int
 main(int argc, char *argv[])
 {
+	int opt;
 	int rc = 0;
 	struct mosquitto *mosq = NULL;
 
@@ -120,6 +147,7 @@ main(int argc, char *argv[])
 	};
 
 	luzz_ctx_t ctx = {
+		.mqttp = &mqtt,
 		.panel = 0,
 		.dev = "/dev/stdout",
 		.speed_hz = 16000000,
@@ -128,6 +156,41 @@ main(int argc, char *argv[])
 		.col_length = 2,
 		.framep = NULL,
 	};
+
+	while((opt = getopt(argc, argv, "h:p:o:s:t:i:n:c:")) != -1) {
+		switch (opt) {
+		case 'h':
+			mqtt.host = optarg;
+			break;
+		case 'p':
+			mqtt.port = atoi(optarg);
+			break;
+		case 'o':
+			ctx.dev = optarg;
+			break;
+		case 's':
+			ctx.speed_hz = atoi(optarg);
+			break;
+		case 't':
+			if (strcmp(optarg, "lpd8806") == 0) {
+				ctx.strip_type = LUZZ_STRIP_LPD8806;
+			};
+			break;
+		case 'i':
+			ctx.panel = atoi(optarg);
+			break;
+		case 'n':
+			ctx.num_leds = atoi(optarg);
+			break;
+		case 'c':
+			ctx.col_length = atoi(optarg);
+			break;
+		default:
+			luzz_usage(&ctx);
+			rc = -1;
+			goto finish;
+		}
+	}
 
 	ctx.framep = calloc(ctx.num_leds + 1, sizeof(luzz_grb_t));
 	if (ctx.framep == NULL) {
@@ -155,13 +218,13 @@ main(int argc, char *argv[])
 
 	if (!mosq) {
 		switch (errno) {
-			case ENOMEM:
-				rc = 1;
-				goto oom;
-			case EINVAL:
-				fprintf(stderr, "mosq_new: Invalid id and/or clean_session.\n");
-				rc = 1;
-				goto finish;
+		case ENOMEM:
+			rc = 2;
+			goto oom;
+		case EINVAL:
+			fprintf(stderr, "mosq_new: Invalid id and/or clean_session.\n");
+			rc = 2;
+			goto finish;
 		}
 	}
 
@@ -177,23 +240,23 @@ main(int argc, char *argv[])
 		while ((rc = mosquitto_loop(mosq,
 				mqtt.timeout, mqtt.max_packets)) != MOSQ_ERR_SUCCESS) {
 			switch (rc) {
-				case MOSQ_ERR_INVAL:
-					fprintf(stderr, "mosq_loop: Invalid input parameters.\n");
-					goto finish;
-				case MOSQ_ERR_NOMEM:
-					goto oom;
-				case MOSQ_ERR_PROTOCOL:
-					fprintf(stderr, "mosq_loop: MQTT Protocol error.\n");
-					goto finish;
-				case MOSQ_ERR_ERRNO:
-					perror("mosq_loop");
-					goto finish;
-				case MOSQ_ERR_NO_CONN:
-					fprintf(stderr, "mosq_loop: No broker connection.\n");
-					break;
-				case MOSQ_ERR_CONN_LOST:
-					fprintf(stderr, "mosq_loop: Connection to broker was lost.\n");
-					break;
+			case MOSQ_ERR_INVAL:
+				fprintf(stderr, "mosq_loop: Invalid input parameters.\n");
+				goto finish;
+			case MOSQ_ERR_NOMEM:
+				goto oom;
+			case MOSQ_ERR_PROTOCOL:
+				fprintf(stderr, "mosq_loop: MQTT Protocol error.\n");
+				goto finish;
+			case MOSQ_ERR_ERRNO:
+				perror("mosq_loop");
+				goto finish;
+			case MOSQ_ERR_NO_CONN:
+				fprintf(stderr, "mosq_loop: No broker connection.\n");
+				break;
+			case MOSQ_ERR_CONN_LOST:
+				fprintf(stderr, "mosq_loop: Connection to broker was lost.\n");
+				break;
 			}
 
 			sleep(1);

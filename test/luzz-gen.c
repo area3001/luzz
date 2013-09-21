@@ -29,12 +29,32 @@
 
 #include "../luzz.h"
 
+void
+luzz_gen_usage(const luzz_ctx_t *ctxp)
+{
+	fprintf(stderr,
+		"Usage: luzz_gen [-h host] [-p port] [-i index] [-n num_leds] [-r fps]\n"
+		"\n"
+		"	-h : mqtt broker host address (%s)\n"
+		"	-p : mqtt broker port (%d)\n"
+		"	-i : led panel index (%d)\n"
+		"	-n : number of leds on the strip (%d)\n"
+		"	-r : frame rate in fps (%d)\n"
+		"\n",
+		ctxp->mqttp->host,
+		ctxp->mqttp->port,
+		ctxp->panel,
+		ctxp->num_leds,
+		ctxp->fps
+	);
+}
+
 int
 main(int argc, char *argv[])
 {
+	int opt;
 	int rc = 0;
 	struct mosquitto *mosq = NULL;
-	void *ctx = NULL;
 
 	luzz_mqtt_t mqtt = {
 		.host = "localhost",
@@ -47,13 +67,39 @@ main(int argc, char *argv[])
 		.mid = NULL,
 		.topic = NULL,
 		.qos = 0,
-		.retain =0,
+		.retain = 0,
 	};
 
-	int panel = 0;
-	int num_leds = 4;
-	int rate = 2; /* fps */
-	luzz_rgb_t *framep = NULL;
+	luzz_ctx_t ctx = {
+		.mqttp = &mqtt,
+		.panel = 0,
+		.num_leds = 4,
+		.fps = 2,
+		.framep = NULL,
+	};
+
+	while ((opt = getopt(argc, argv, "h:p:i:n:r:")) != -1) {
+		switch (opt) {
+		case 'h':
+			mqtt.host = optarg;
+			break;
+		case 'p':
+			mqtt.port = atoi(optarg);
+			break;
+		case 'i':
+			ctx.panel = atoi(optarg);
+			break;
+		case 'n':
+			ctx.num_leds = atoi(optarg);
+			break;
+		case 'r':
+			ctx.fps = atoi(optarg);
+			break;
+		default:
+			luzz_gen_usage(&ctx);
+			goto finish;
+		}
+	}
 
 	int i = 0;
 	bool red = true;
@@ -61,12 +107,11 @@ main(int argc, char *argv[])
 	struct timespec ts_remain;
 	struct timespec ts_request = {
 		.tv_sec = 0,
-		.tv_nsec = 1e9 / rate
+		.tv_nsec = 1e9 / ctx.fps
 	};
 
-
-	framep = calloc(num_leds, sizeof(luzz_grb_t));
-	if (framep == NULL) {
+	ctx.framep = calloc(ctx.num_leds, sizeof(luzz_grb_t));
+	if (ctx.framep == NULL) {
 		goto oom;
 	}
 
@@ -75,57 +120,57 @@ main(int argc, char *argv[])
 	if ((rc = asprintf(&mqtt.id, LUZZ_GEN_ID_TPL, LUZZ_VERSION)) < 0) {
 		goto oom;
 	}
-	mosq = mosquitto_new(mqtt.id, mqtt.clean_session, ctx);
+	mosq = mosquitto_new(mqtt.id, mqtt.clean_session, &ctx);
 
 	if (!mosq) {
 		switch (errno) {
-			case ENOMEM:
-				rc = 1;
-				goto oom;
-			case EINVAL:
-				fprintf(stderr, "mosq_new: Invalid id and/or clean_session.\n");
-				rc = 1;
-				goto finish;
+		case ENOMEM:
+			rc = 1;
+			goto oom;
+		case EINVAL:
+			fprintf(stderr, "mosq_new: Invalid id and/or clean_session.\n");
+			rc = 1;
+			goto finish;
 		}
 	}
 
 	mosquitto_connect(mosq, mqtt.host, mqtt.port, mqtt.keepalive);
 
-	if ((rc = asprintf(&mqtt.topic, LUZZ_TOPIC_TPL, panel)) < 0) {
+	if ((rc = asprintf(&mqtt.topic, LUZZ_TOPIC_TPL, ctx.panel)) < 0) {
 		goto oom;
 	}
 
 	while (true) {
-		(framep + i++)->r = red ? 0xFF : 0x00;
+		((luzz_rgb_t *)ctx.framep + i++)->r = red ? 0xFF : 0x00;
 
-		if (i == num_leds - 1) {
+		if (i == ctx.num_leds - 1) {
 			i = 0;
 			red = !red;
 		}
 
-		mosquitto_publish(mosq, mqtt.mid, mqtt.topic, sizeof(luzz_rgb_t) * num_leds,
-			(const void *)framep, mqtt.qos, mqtt.retain);
+		mosquitto_publish(mosq, mqtt.mid, mqtt.topic, sizeof(luzz_rgb_t) * ctx.num_leds,
+			(const void *)ctx.framep, mqtt.qos, mqtt.retain);
 
 		while ((rc = mosquitto_loop(mosq,
 				mqtt.timeout, mqtt.max_packets)) != MOSQ_ERR_SUCCESS) {
 			switch (rc) {
-				case MOSQ_ERR_INVAL:
-					fprintf(stderr, "mosq_loop: Invalid input parameters.\n");
-					goto finish;
-				case MOSQ_ERR_NOMEM:
-					goto oom;
-				case MOSQ_ERR_PROTOCOL:
-					fprintf(stderr, "mosq_loop: MQTT Protocol error.\n");
-					goto finish;
-				case MOSQ_ERR_ERRNO:
-					perror("mosq_loop");
-					goto finish;
-				case MOSQ_ERR_NO_CONN:
-					fprintf(stderr, "mosq_loop: No broker connection.\n");
-					break;
-				case MOSQ_ERR_CONN_LOST:
-					fprintf(stderr, "mosq_loop: Connection to broker was lost.\n");
-					break;
+			case MOSQ_ERR_INVAL:
+				fprintf(stderr, "mosq_loop: Invalid input parameters.\n");
+				goto finish;
+			case MOSQ_ERR_NOMEM:
+				goto oom;
+			case MOSQ_ERR_PROTOCOL:
+				fprintf(stderr, "mosq_loop: MQTT Protocol error.\n");
+				goto finish;
+			case MOSQ_ERR_ERRNO:
+				perror("mosq_loop");
+				goto finish;
+			case MOSQ_ERR_NO_CONN:
+				fprintf(stderr, "mosq_loop: No broker connection.\n");
+				break;
+			case MOSQ_ERR_CONN_LOST:
+				fprintf(stderr, "mosq_loop: Connection to broker was lost.\n");
+				break;
 			}
 
 			sleep(1);

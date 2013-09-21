@@ -21,13 +21,15 @@ typedef struct {
 } luzz_mqtt_t;
 
 typedef struct {
+	luzz_mqtt_t *mqttp;
 	int panel;
 	char *dev;
-	long speed_hz;
+	int speed_hz;
 	int fd;
 	int strip_type;
 	int num_leds;
 	int col_length;
+	int fps;
 	void *framep;
 } luzz_ctx_t;
 
