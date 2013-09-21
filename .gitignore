@@ -15,3 +15,8 @@
 *.exe
 *.out
 *.app
+luzz
+test/luzz-gen
+
+# Swap files
+*.swp
