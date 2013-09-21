@@ -28,6 +28,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <linux/spi/spidev.h>
+#include <sched.h>
 #include <mosquitto.h>
 
 #include "luzz.h"
@@ -105,7 +106,7 @@ luzz_usage(const luzz_ctx_t *ctxp)
 {
 	fprintf(stderr,
 		"Usage: luzz [-h host] [-p port] [-o device] [-s speed] [-t type]\n"
-		"            [-i index] [-n num_leds] [-c col_length]\n"
+		"            [-i index] [-n num_leds] [-c col_length] [-P priority]\n"
 		"\n"
 		"	-h : mqtt broker host address (%s)\n"
 		"	-p : mqtt broker port (%d)\n"
@@ -115,6 +116,7 @@ luzz_usage(const luzz_ctx_t *ctxp)
 		"	-i : led panel index (%d)\n"
 		"	-n : number of leds on the strip (%d)\n"
 		"	-c : number of leds per column (%d)\n"
+		"	-P : realtime process scheduling priority (%d)\n"
 		"\n",
 		ctxp->mqttp->host,
 		ctxp->mqttp->port,
@@ -122,7 +124,8 @@ luzz_usage(const luzz_ctx_t *ctxp)
 		ctxp->speed_hz,
 		ctxp->panel,
 		ctxp->num_leds,
-		ctxp->col_length
+		ctxp->col_length,
+		ctxp->rt_prio
 	);
 }
 
@@ -132,6 +135,9 @@ main(int argc, char *argv[])
 	int opt;
 	int rc = 0;
 	struct mosquitto *mosq = NULL;
+	struct sched_param sched = {
+		.sched_priority = 1
+	};
 
 	luzz_mqtt_t mqtt = {
 		.host = "localhost",
@@ -155,9 +161,10 @@ main(int argc, char *argv[])
 		.num_leds = 4,
 		.col_length = 2,
 		.framep = NULL,
+		.rt_prio = -1,
 	};
 
-	while((opt = getopt(argc, argv, "h:p:o:s:t:i:n:c:")) != -1) {
+	while((opt = getopt(argc, argv, "h:p:o:s:t:i:n:c:P:")) != -1) {
 		switch (opt) {
 		case 'h':
 			mqtt.host = optarg;
@@ -185,11 +192,19 @@ main(int argc, char *argv[])
 		case 'c':
 			ctx.col_length = atoi(optarg);
 			break;
+		case 'P':
+			ctx.rt_prio = atoi(optarg);
+			break;
 		default:
 			luzz_usage(&ctx);
 			rc = -1;
 			goto finish;
 		}
+	}
+
+	if (ctx.rt_prio > -1 && sched_setscheduler(0, SCHED_FIFO, &sched) == -1) {
+		perror("rt_prio");
+		goto finish;
 	}
 
 	ctx.framep = calloc(ctx.num_leds + 1, sizeof(luzz_grb_t));

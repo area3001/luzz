@@ -31,6 +31,7 @@ typedef struct {
 	int col_length;
 	int fps;
 	void *framep;
+	int rt_prio;
 } luzz_ctx_t;
 
 typedef struct {
