@@ -32,6 +32,7 @@ typedef struct {
 	int fps;
 	void *framep;
 	int rt_prio;
+	int memlock;
 } luzz_ctx_t;
 
 typedef struct {

@@ -29,6 +29,7 @@
 #include <sys/ioctl.h>
 #include <linux/spi/spidev.h>
 #include <sched.h>
+#include <sys/mman.h>
 #include <mosquitto.h>
 
 #include "luzz.h"
@@ -106,7 +107,8 @@ luzz_usage(const luzz_ctx_t *ctxp)
 {
 	fprintf(stderr,
 		"Usage: luzz [-h host] [-p port] [-o device] [-s speed] [-t type]\n"
-		"            [-i index] [-n num_leds] [-c col_length] [-P priority]\n"
+		"            [-i index] [-n num_leds] [-c col_length]\n"
+		"            [-P priority] [-M]\n"
 		"\n"
 		"	-h : mqtt broker host address (%s)\n"
 		"	-p : mqtt broker port (%d)\n"
@@ -117,6 +119,7 @@ luzz_usage(const luzz_ctx_t *ctxp)
 		"	-n : number of leds on the strip (%d)\n"
 		"	-c : number of leds per column (%d)\n"
 		"	-P : realtime process scheduling priority (%d)\n"
+		"	-M : lock all process memory (%d)\n"
 		"\n",
 		ctxp->mqttp->host,
 		ctxp->mqttp->port,
@@ -125,7 +128,8 @@ luzz_usage(const luzz_ctx_t *ctxp)
 		ctxp->panel,
 		ctxp->num_leds,
 		ctxp->col_length,
-		ctxp->rt_prio
+		ctxp->rt_prio,
+		ctxp->memlock
 	);
 }
 
@@ -162,9 +166,10 @@ main(int argc, char *argv[])
 		.col_length = 2,
 		.framep = NULL,
 		.rt_prio = -1,
+		.memlock = -1,
 	};
 
-	while((opt = getopt(argc, argv, "h:p:o:s:t:i:n:c:P:")) != -1) {
+	while((opt = getopt(argc, argv, "h:p:o:s:t:i:n:c:P:M")) != -1) {
 		switch (opt) {
 		case 'h':
 			mqtt.host = optarg;
@@ -195,6 +200,9 @@ main(int argc, char *argv[])
 		case 'P':
 			ctx.rt_prio = atoi(optarg);
 			break;
+		case 'M':
+			ctx.memlock = 1;
+			break;
 		default:
 			luzz_usage(&ctx);
 			rc = -1;
@@ -204,6 +212,11 @@ main(int argc, char *argv[])
 
 	if (ctx.rt_prio > -1 && sched_setscheduler(0, SCHED_FIFO, &sched) == -1) {
 		perror("rt_prio");
+		goto finish;
+	}
+
+	if (ctx.memlock > -1 && mlockall(MCL_CURRENT | MCL_FUTURE) == -1) {
+		perror("memlock");
 		goto finish;
 	}
 
