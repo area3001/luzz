@@ -7,6 +7,20 @@
 #define LUZZ_STRIP_LPD8806 0
 
 typedef struct {
+	char *host;
+	int port;
+	int keepalive;
+	char *id;
+	bool clean_session;
+	int timeout;
+	int max_packets;
+	int *mid;
+	char *topic;
+	int qos;
+	int retain;
+} luzz_mqtt_t;
+
+typedef struct {
 	int panel;
 	char *dev;
 	long speed_hz;

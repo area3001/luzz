@@ -104,17 +104,20 @@ int
 main(int argc, char *argv[])
 {
 	int rc = 0;
-	char *host = "localhost";
-	int port = 1883;
-	int keepalive = 60;
-	char *id = NULL;
-	bool clean_session = true;
 	struct mosquitto *mosq = NULL;
-	int timeout = -1;
-	int max_packets = 1;
-	int *mid = NULL;
-	char *topic = NULL;
-	int qos = 0;
+
+	luzz_mqtt_t mqtt = {
+		.host = "localhost",
+		.port = 1883,
+		.keepalive = 60,
+		.id = NULL,
+		.clean_session = true,
+		.timeout = -1,
+		.max_packets = 1,
+		.mid = NULL,
+		.topic = NULL,
+		.qos = 0,
+	};
 
 	luzz_ctx_t ctx = {
 		.panel = 0,
@@ -145,10 +148,10 @@ main(int argc, char *argv[])
 
 	mosquitto_lib_init();
 
-	if ((rc = asprintf(&id, LUZZ_ID_TPL, LUZZ_VERSION, ctx.panel)) < 0) {
+	if ((rc = asprintf(&mqtt.id, LUZZ_ID_TPL, LUZZ_VERSION, ctx.panel)) < 0) {
 		goto oom;
 	}
-	mosq = mosquitto_new(id, clean_session, &ctx);
+	mosq = mosquitto_new(mqtt.id, mqtt.clean_session, &ctx);
 
 	if (!mosq) {
 		switch (errno) {
@@ -163,15 +166,16 @@ main(int argc, char *argv[])
 	}
 
 	mosquitto_message_callback_set(mosq, luzz_on_message);
-	mosquitto_connect(mosq, host, port, keepalive);
+	mosquitto_connect(mosq, mqtt.host, mqtt.port, mqtt.keepalive);
 
-	if ((rc = asprintf(&topic, LUZZ_TOPIC_TPL, ctx.panel)) < 0) {
+	if ((rc = asprintf(&mqtt.topic, LUZZ_TOPIC_TPL, ctx.panel)) < 0) {
 		goto oom;
 	}
-	mosquitto_subscribe(mosq, mid, topic, qos);
+	mosquitto_subscribe(mosq, mqtt.mid, mqtt.topic, mqtt.qos);
 
 	while (true) {
-		while ((rc = mosquitto_loop(mosq, timeout, max_packets)) != MOSQ_ERR_SUCCESS) {
+		while ((rc = mosquitto_loop(mosq,
+				mqtt.timeout, mqtt.max_packets)) != MOSQ_ERR_SUCCESS) {
 			switch (rc) {
 				case MOSQ_ERR_INVAL:
 					fprintf(stderr, "mosq_loop: Invalid input parameters.\n");
@@ -194,7 +198,7 @@ main(int argc, char *argv[])
 
 			sleep(1);
 			mosquitto_reconnect(mosq);
-			mosquitto_subscribe(mosq, mid, topic, qos);
+			mosquitto_subscribe(mosq, mqtt.mid, mqtt.topic, mqtt.qos);
 		}
 	}
 
