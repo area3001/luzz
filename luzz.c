@@ -139,9 +139,6 @@ main(int argc, char *argv[])
 	int opt;
 	int rc = 0;
 	struct mosquitto *mosq = NULL;
-	struct sched_param sched = {
-		.sched_priority = 1
-	};
 
 	luzz_mqtt_t mqtt = {
 		.host = "localhost",
@@ -209,6 +206,10 @@ main(int argc, char *argv[])
 			goto finish;
 		}
 	}
+
+	struct sched_param sched = {
+		.sched_priority = ctx.rt_prio
+	};
 
 	if (ctx.rt_prio > -1 && sched_setscheduler(0, SCHED_FIFO, &sched) == -1) {
 		perror("rt_prio");
