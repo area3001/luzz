@@ -69,7 +69,7 @@ main(int argc, char *argv[])
 		.keepalive = 60,
 		.id = NULL,
 		.clean_session = true,
-		.timeout = -1,
+		.timeout = 0,
 		.max_packets = 1,
 		.mid = NULL,
 		.topic = NULL,
