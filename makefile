@@ -3,9 +3,9 @@ PROG = luzz
 OBJS = luzz.o
 LIBS = -lmosquitto
 CSTD = -std=gnu99
-
+OPT = -O2
 WARN = -Wall -pedantic
-CFLAGS += $(CSTD) $(WARN)
+CFLAGS += $(CSTD) $(OPT) $(WARN)
 LDFLAGS += $(CSTD)
 
 $(PROG): $(OBJS)
