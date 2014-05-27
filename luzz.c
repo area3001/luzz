@@ -240,7 +240,7 @@ main(int argc, char *argv[])
 
 	mosquitto_lib_init();
 
-	if ((rc = asprintf(&mqtt.id, LUZZ_ID_TPL, LUZZ_VERSION, ctx.panel)) < 0) {
+	if ((rc = asprintf(&mqtt.id, LUZZ_ID_TPL, LUZZ_VERSION, ctx.panel, getpid())) < 0) {
 		goto oom;
 	}
 	mosq = mosquitto_new(mqtt.id, mqtt.clean_session, &ctx);
