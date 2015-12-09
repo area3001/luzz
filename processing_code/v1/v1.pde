@@ -11,15 +11,15 @@ import org.eclipse.paho.client.mqttv3.*;
 import java.util.Arrays;
 
 // load image for directory
-String images_dir_name = "/home/fablab/dev/luzz/images/NYAN/";
+String images_dir_name = "/home/fablab/dev/luzz/images/NYANLARGE/";
 //String images_dir_name = "/home/fablab/dev/luzz/images/NYAN/";
-File images_dir = new File (images_dir_name);
+//File images_dir = new File (images_dir_name);
 //String[] images_names = images_dir.list();
 
 // Load image names manually
 //String[] images_names = {"space_invaders_anim_1.png", "space_invaders_anim_2.png"};
 //String[] images_names = {"nyan_cat-cropped.gif"};
-String[] images_names = {"01.png", "02.png", "03.png", "04.png", "05.png", "06.png", "07.png", "08.png", "09.png", "10.png", "11.png", "12.png"};
+String[] images_names = {"1.png", "2.png", "3.png", "4.png", "5.png", "6.png", "7.png", "8.png", "9.png", "10.png", "11.png", "12.png"};
 
 PImage[] images = new PImage[images_names.length]; // Declare variable "a" of type PImage
 
@@ -27,7 +27,7 @@ MqttClient client;
 MqttMessage message;
 
 int savedTime;
-int totalTime = 1200;
+int totalTime = 100;
 int image_index = 0;
 
 class MyFrame {
@@ -54,7 +54,7 @@ MyFrame frame3 = new MyFrame(0,19,0,45);
 MyFrame frame4 = new MyFrame(0,19,0,45);
 MyFrame frame5 = new MyFrame(0,19,0,45);
 MyFrame frame6 = new MyFrame(0,19,0,45);
-MyFrame[] frames = {frame0, frame1, frame2, frame3, frame4, frame5, frame6};
+MyFrame[] frames = {frame0, frame1};
  
 void setup() {
   //println (sketchPath);
@@ -73,7 +73,8 @@ void setup() {
 
   colorMode(RGB, 255);
   
-  size(46, 20);
+ // size(46, 20);
+  size(92, 40);
   // The image file must be in the data folder of the current sketch
   // to load successfully
   
@@ -152,7 +153,7 @@ void mousePressed() {
       //draw(image_index);
       redraw();
       
-      // send image via mqtt
+        // send image via mqtt
       grab_and_send();
       
       println( "Image index " + image_index + " length " + images.length);  
