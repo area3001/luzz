@@ -1,7 +1,7 @@
 #define LUZZ_VERSION "0.1"
 
-#define LUZZ_ID_TPL "luzz-v%s-i%d"
-#define LUZZ_GEN_ID_TPL "luzz-gen-v%s"
+#define LUZZ_ID_TPL "luzz-v%s-i%d/%s-p%d"
+#define LUZZ_GEN_ID_TPL "luzz-gen-v%s/%s-p%d"
 #define LUZZ_TOPIC_TPL "/luzz/%d"
 
 #define LUZZ_STRIP_LPD8806 0
@@ -22,6 +22,7 @@ typedef struct {
 
 typedef struct {
 	luzz_mqtt_t *mqttp;
+	struct utsname uts;
 	int panel;
 	char *dev;
 	int speed_hz;
