@@ -13,8 +13,8 @@ SimpleScreenCapture simpleScreenCapture;
 MqttClient client;
 MqttMessage message;
 
-int SIZE_ROWS = 20;
-int SIZE_COLS = 46;
+int SIZE_ROWS = 40;
+int SIZE_COLS = 92;
 int OFFSET_X = 500;
 int OFFSET_Y = 500;
 
@@ -37,15 +37,15 @@ class MyFrame {
 };
 
 // init
-MyFrame frame0 = new MyFrame(0,19,0,45);
-MyFrame frame1 = new MyFrame(0,19,0,91);
+MyFrame frame0 = new MyFrame(0,39,0,45);
+MyFrame frame1 = new MyFrame(0,39,46,91);
 MyFrame frame2 = new MyFrame(0,19,0,45);
 MyFrame frame3 = new MyFrame(0,19,0,45);
 MyFrame frame4 = new MyFrame(0,19,0,45);
 MyFrame frame5 = new MyFrame(0,19,0,45);
 MyFrame frame6 = new MyFrame(0,19,0,45);
 // MyFrame[] frames = {frame0, frame1, frame2, frame3, frame4, frame5, frame6};
-MyFrame[] frames = {frame0}; 
+MyFrame[] frames = {frame0, frame1}; 
 
 void setup() {
   colorMode(RGB, 255);
