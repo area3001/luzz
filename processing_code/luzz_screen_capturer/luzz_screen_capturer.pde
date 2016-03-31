@@ -15,8 +15,10 @@ MqttMessage message;
 
 int SIZE_ROWS = 40;
 int SIZE_COLS = 92;
+int SCALE_RATIO = 2;
 int OFFSET_X = 500;
 int OFFSET_Y = 500;
+int FRAME_RATE = 10;
 
 PImage[] images = new PImage[1];
 
@@ -49,8 +51,8 @@ MyFrame[] frames = {frame0, frame1};
 
 void setup() {
   colorMode(RGB, 255);
-  frameRate(5);
-  size(SIZE_COLS, SIZE_ROWS);
+  frameRate(FRAME_RATE);
+  size((SIZE_COLS*SCALE_RATIO), (SIZE_ROWS*SCALE_RATIO));
   simpleScreenCapture = new SimpleScreenCapture();
 
   try {
@@ -76,7 +78,7 @@ void grab_and_send() {
     int loc_frame = 0;
     for (int i = frames[h].bottom; i < frames[h].top + 1; i++) {
       for (int j = frames[h].left; j < frames[h].right + 1; j++) {
-        int loc_image = i * width + j;      
+        int loc_image = (i * width + j) * SCALE_RATIO;      
         frames[h].payload[loc_frame] = byte(red(images[image_index].pixels[loc_image])); // can also do with red = c >> 16 & 0xFF;
         frames[h].payload[loc_frame+1] = byte(green(images[image_index].pixels[loc_image]));
         frames[h].payload[loc_frame+2] = byte(blue(images[image_index].pixels[loc_image]));
